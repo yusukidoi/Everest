@@ -25,3 +25,7 @@ export {
 } from "./application/ResourceManagementService.js";
 export type { MissionResourceSeed } from "./application/ResourceManagementService.js";
 export { ResourceDiscoveryService } from "./application/ResourceDiscoveryService.js";
+
+export type { UsageRecord } from "./domain/UsageRecord.js";
+export { UsageLog } from "./domain/UsageLog.js";
+export { ResourceUsageService } from "./application/ResourceUsageService.js";
