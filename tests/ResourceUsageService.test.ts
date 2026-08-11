@@ -21,6 +21,7 @@ describe("ResourceUsageService", () => {
       resourceId: "food-station",
       membershipLevelAtUse: MembershipLevel.Silver,
       usedAt: at,
+      outcome: "ALLOWED",
     });
     expect(record.id).toBeTruthy();
   });
@@ -60,7 +61,7 @@ describe("ResourceUsageService", () => {
     usage.useResource("p-gold", "food-station");
     usage.useResource("p-gold", "adv-medical");
 
-    expect(log.getAll()).toHaveLength(2);
+    expect(log.listAllowed()).toHaveLength(2);
     expect(log.listByPassenger("p-gold")).toHaveLength(2);
   });
 });

@@ -1,6 +1,8 @@
-import type { UsageRecord } from "./UsageRecord.js";
+import { UsageOutcome, type UsageRecord } from "./UsageRecord.js";
 
-/** Append-only log of successful resource uses. */
+/**
+ * Append-only audit trail of resource interactions (allowed and denied).
+ */
 export class UsageLog {
   private readonly records: UsageRecord[] = [];
 
@@ -19,5 +21,13 @@ export class UsageLog {
 
   listByResource(resourceId: string): readonly UsageRecord[] {
     return this.records.filter((record) => record.resourceId === resourceId);
+  }
+
+  listAllowed(): readonly UsageRecord[] {
+    return this.records.filter((record) => record.outcome === UsageOutcome.Allowed);
+  }
+
+  listDenied(): readonly UsageRecord[] {
+    return this.records.filter((record) => record.outcome === UsageOutcome.Denied);
   }
 }
