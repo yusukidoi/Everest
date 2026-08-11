@@ -24,3 +24,4 @@ export {
   MISSION_BASE_INVENTORY,
 } from "./application/ResourceManagementService.js";
 export type { MissionResourceSeed } from "./application/ResourceManagementService.js";
+export { ResourceDiscoveryService } from "./application/ResourceDiscoveryService.js";
