@@ -15,3 +15,12 @@ export type { CrewLead } from "./domain/CrewLeadRegistry.js";
 export type { Passenger } from "./domain/Passenger.js";
 export { PassengerRegistry } from "./domain/PassengerRegistry.js";
 export { PassengerManagementService } from "./application/PassengerManagementService.js";
+
+export type { Resource } from "./domain/Resource.js";
+export { ResourceType } from "./domain/Resource.js";
+export { ResourceCatalog } from "./domain/ResourceCatalog.js";
+export {
+  ResourceManagementService,
+  MISSION_BASE_INVENTORY,
+} from "./application/ResourceManagementService.js";
+export type { MissionResourceSeed } from "./application/ResourceManagementService.js";
