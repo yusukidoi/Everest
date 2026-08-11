@@ -30,3 +30,8 @@ export type { UsageRecord } from "./domain/UsageRecord.js";
 export { UsageOutcome } from "./domain/UsageRecord.js";
 export { UsageLog } from "./domain/UsageLog.js";
 export { ResourceUsageService } from "./application/ResourceUsageService.js";
+export { ReportingService } from "./application/ReportingService.js";
+export type {
+  MembershipUsageSummary,
+  ResourceDemandSummary,
+} from "./application/ReportingService.js";
