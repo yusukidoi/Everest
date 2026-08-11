@@ -35,3 +35,9 @@ export type {
   MembershipUsageSummary,
   ResourceDemandSummary,
 } from "./application/ReportingService.js";
+
+export {
+  createPrmsSystem,
+  seedDemoMission,
+} from "./infrastructure/PrmsSystem.js";
+export type { PrmsSystem } from "./infrastructure/PrmsSystem.js";
