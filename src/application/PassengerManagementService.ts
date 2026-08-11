@@ -1,6 +1,9 @@
 import type { CrewLeadRegistry } from "../domain/CrewLeadRegistry.js";
 import { DomainError } from "../domain/DomainError.js";
-import type { MembershipLevel } from "../domain/MembershipLevel.js";
+import {
+  compareLevels,
+  type MembershipLevel,
+} from "../domain/MembershipLevel.js";
 import type { Passenger } from "../domain/Passenger.js";
 import type { PassengerRegistry } from "../domain/PassengerRegistry.js";
 
@@ -51,6 +54,49 @@ export class PassengerManagementService {
 
     const current = this.passengers.getById(passengerId);
     return this.passengers.update({ ...current, name: normalizedName });
+  }
+
+  changeMembershipLevel(
+    actorCrewLeadId: string,
+    passengerId: string,
+    newLevel: MembershipLevel,
+  ): Passenger {
+    this.requireCrewLead(actorCrewLeadId);
+    return this.passengers.setMembershipLevel(passengerId, newLevel);
+  }
+
+  upgradePassenger(
+    actorCrewLeadId: string,
+    passengerId: string,
+    newLevel: MembershipLevel,
+  ): Passenger {
+    this.requireCrewLead(actorCrewLeadId);
+    const current = this.passengers.getById(passengerId);
+
+    if (compareLevels(newLevel, current.membershipLevel) <= 0) {
+      throw new DomainError(
+        `Upgrade requires a higher membership than '${current.membershipLevel}'.`,
+      );
+    }
+
+    return this.passengers.setMembershipLevel(passengerId, newLevel);
+  }
+
+  downgradePassenger(
+    actorCrewLeadId: string,
+    passengerId: string,
+    newLevel: MembershipLevel,
+  ): Passenger {
+    this.requireCrewLead(actorCrewLeadId);
+    const current = this.passengers.getById(passengerId);
+
+    if (compareLevels(newLevel, current.membershipLevel) >= 0) {
+      throw new DomainError(
+        `Downgrade requires a lower membership than '${current.membershipLevel}'.`,
+      );
+    }
+
+    return this.passengers.setMembershipLevel(passengerId, newLevel);
   }
 
   removePassenger(actorCrewLeadId: string, passengerId: string): void {
