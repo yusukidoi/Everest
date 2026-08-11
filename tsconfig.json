@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
+    "rootDir": ".",
+    "noEmit": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "lib": ["ES2022"],
-    "types": ["node"],
+    "types": ["node", "vitest/globals"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
@@ -18,6 +18,6 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }
