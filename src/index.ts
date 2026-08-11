@@ -7,3 +7,7 @@ export {
   compareLevels,
   inheritsFrom,
 } from "./domain/MembershipLevel.js";
+
+export { DomainError } from "./domain/DomainError.js";
+export { CrewLeadRegistry } from "./domain/CrewLeadRegistry.js";
+export type { CrewLead } from "./domain/CrewLeadRegistry.js";
