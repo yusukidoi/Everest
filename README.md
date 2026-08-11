@@ -1,100 +1,116 @@
-# Spaceship X26 — Passenger Resource Management System (PRMS)
+# Spaceship X26 PRMS
 
-In-memory TypeScript system for managing Spaceship X26 passengers, membership-gated ship resources, usage audit trails, and Crew Lead reporting.
+Passenger Resource Management for the Earth→Mars run: Crew Leads administer people and ship resources; passengers only see and use what their membership allows; every successful or denied use is audited so leads can see demand and personal history.
 
-## Requirements covered
-
-| Level | Capability |
-| --- | --- |
-| **1** | Exactly three Crew Leads; resources tagged by minimum membership; passengers discover allowed resources |
-| **2** | Real-time use validation; upgrade/downgrade tiers; audit log of allowed and denied interactions |
-| **3** | Personal usage history; usage summaries by membership; high-demand resource analytics |
-
-**Membership inheritance:** Silver ⊂ Gold ⊂ Platinum.
-
-**Base inventory seed**
-
-| Resource | Minimum tier |
-| --- | --- |
-| Food Supply Station, Sleeping Pod, Basic Hygiene Pod | Silver |
-| Private Cabin, Advanced Medical Bay | Gold |
-| Luxury Oxygen Pod, VIP Recreation Deck | Platinum |
-
-## Quick start
+Stack is TypeScript (Node ESM) + Vitest. State is in-memory. There is a small CLI so you can exercise the domain without standing up an API.
 
 ```bash
 npm install
 npm test
-npm start                 # scripted demo
+npm start                          # walks a short demo scenario
 npm start -- discover p-silver
 npm start -- use p-gold adv-medical
 npm start -- upgrade lead-1 p-silver GOLD
 npm start -- report-demand lead-1
 ```
 
-Demo actors after seed: Crew Leads `lead-1`/`lead-2`/`lead-3` (Aiko, Ben, Cara); passengers `p-silver` (Yuri), `p-gold` (Mika), `p-platinum` (Nova).
+Seeded IDs: leads `lead-1`–`lead-3` (Aiko, Ben, Cara); passengers `p-silver` / `p-gold` / `p-platinum` (Yuri, Mika, Nova).
 
-## Architecture
+---
+
+## What it implements
+
+Membership is a strict lattice: **Silver ⊂ Gold ⊂ Platinum**. Higher tiers inherit lower access.
+
+| Tier | Resources in the seeded catalog |
+| --- | --- |
+| Silver | Food Supply Station, Sleeping Pod, Basic Hygiene Pod |
+| Gold | Private Cabin, Advanced Medical Bay (+ Silver) |
+| Platinum | Luxury Oxygen Pod, VIP Recreation Deck (+ Gold & Silver) |
+
+Against the brief:
+
+1. **Basics** — Exactly three Crew Leads. Resources carry a minimum membership. Passengers get a filtered discovery list.
+2. **Operations** — Use is checked at call time. Leads can upgrade/downgrade. Allow and deny both land in an audit log.
+3. **Insights** — Personal history, usage rolled up by current membership, high-demand ranking for leads.
+
+---
+
+## Layout
 
 ```
-src/
-  domain/           # entities, registries, membership rules, usage log
-  application/      # use-case services (authorization + orchestration)
-  infrastructure/   # composition root + demo seed
-  cli/              # command-line demonstration
+src/domain/            rules + persistence-like registries (no I/O)
+src/application/       use cases (authz + orchestration)
+src/infrastructure/    composition root + demo seed
+src/cli/               thin command surface
 ```
 
-**Design choices**
+I kept rules out of the CLI on purpose. `PrmsSystem.createPrmsSystem()` is the only place that wires collaborators; swapping the in-memory maps for a database later should not force rewriting use cases.
 
-- **Layered OOP:** domain types stay free of CLI/IO; application services enforce Crew Lead authorization and membership checks.
-- **TDD:** behavior was grown from Vitest cases around rules (inheritance, headcount, denial auditing, reporting).
-- **SOLID leanings:** single-purpose services; registries depend on abstractions of data; composition root wires concrete collaborators; open for new report strategies without changing domain models.
-- **Errors:** domain failures raise `DomainError` with actionable messages.
+Registries (`PassengerRegistry`, `ResourceCatalog`, `UsageLog`, `CrewLeadRegistry`) hold state. Application services decide *who* may change it and *when* access is legal. That split is the main maintainability bet.
+
+Notable entry points if you are reviewing code:
+
+- `MembershipLevel.canAccess` — shared inheritance check
+- `CrewLeadRegistry.register` — hard cap at three leads
+- `ResourceUsageService.useResource` — validate, audit allow/deny, then succeed or throw
+- `ReportingService` — history / by-tier summary / demand
+
+Failures are `DomainError` with concrete messages (wrong tier, decommissioned resource, unauthorized actor, etc.).
+
+---
+
+## How I approached it
+
+I built this commit-by-commit around invariants, with tests describing the rule before (or with) the implementation: membership order, the three-lead ceiling, discovery filtering, deny paths, tier direction checks, reporting.
+
+I deliberately avoided a single “god” service. Passenger admin, resource provisioning, usage, discovery, and reporting change for different reasons; keeping them separate made the tests and the git history easier to follow.
+
+I did **not** introduce a DB, HTTP layer, or real authentication. For an assessment I care more that another engineer can read the domain in an afternoon and trust the tests than that the demo looks like a product.
+
+---
 
 ## Assumptions
 
-1. Persistence is in-memory for the process lifetime (suitable for challenge scope).
-2. Crew Lead authorization is by registered id string (no auth protocol/JWT).
-3. Decommissioned resources stay in catalog for history but cannot be used or discovered.
-4. Personal history defaults to **allowed** uses; pass `--denied` (CLI) or `{ includeDenied: true }` for full audit.
-5. Membership summary groups by a passenger’s **current** tier, not historical tier at time of use (`membershipLevelAtUse` is retained on each audit record for deeper analysis later).
-6. Unknown passenger/resource ids fail fast and are **not** audited (no valid interaction parties).
+- Process memory only; restart clears state.
+- “Is this actor a Crew Lead?” is an id lookup on the registry—not sessions/JWT.
+- Decommissioned resources remain addressable for administration but are excluded from discovery and blocked on use.
+- Personal history defaults to allowed uses; denied events are opt-in (`--denied` / `{ includeDenied: true }`).
+- “Usage by membership” uses each passenger’s **current** tier. Each audit row still stores `membershipLevelAtUse` if you want a historical rollup later.
+- Unknown passenger/resource ids throw and are not written to the audit log (there was no valid pair to record).
+
+---
 
 ## Trade-offs
 
-| Choice | Why | Cost |
-| --- | --- | --- |
-| In-memory maps | Focus on domain clarity and tests | No durability / concurrency story |
-| CLI instead of HTTP API | Fastest path to a reviewable demo | No REST contract |
-| Append-only usage log | Simple audit trail | No pagination/archival policy |
-| Sync services | Readable, testable | Would need ports/adapters for async I/O later |
+In-memory maps keep the problem in the domain. Cost: no durability and no concurrency story.
 
-## What I would improve next
+A CLI was faster to review than REST. Cost: no HTTP contract.
 
-- Persist inventory/passengers/usage (SQLite or Postgres) behind repository ports
-- Soft auth (roles/sessions) and stronger id generation
-- Capacity limits / queues per resource (pods, O₂ stations)
-- Report grouping option: by `membershipLevelAtUse` vs current roster tier
-- Property-based tests for membership lattice invariants
+An append-only usage log is enough for the reporting asked for here. Cost: no retention policy, no paging.
 
-## Project scripts
+If I continued the work, I would put repositories behind ports, add capacity limits on contested resources (pods / O₂), and optionally aggregate reports by `membershipLevelAtUse` as well as current roster tier.
 
-| Script | Purpose |
-| --- | --- |
-| `npm test` | Vitest suite |
-| `npm run typecheck` | Strict TypeScript check (src + tests) |
-| `npm run build` | Emit `dist/` |
-| `npm start` | Build + CLI (`demo` by default) |
+---
+
+## Scripts
+
+- `npm test` — Vitest
+- `npm run typecheck` — `src` + `tests`
+- `npm run build` — emit `dist/`
+- `npm start` — build, then CLI (`demo` if no args)
+
+---
 
 ## AI disclosure
 
-Per the hiring brief, AI tools were used as follows:
+I used **Cursor** while building this.
 
-| Question | Answer |
-| --- | --- |
-| **Which AI tool(s)?** | Cursor (Composer agent) |
-| **How were they used?** | Step-by-step implementation with human review between git commits; AI drafted domain/application code, tests, CLI, and README from the PRMS challenge PDF and agreed commit plan. |
-| **What was AI-assisted?** | Project scaffold, membership/Crew Lead/passenger/resource/usage/reporting modules, Vitest coverage, CLI demo wiring, and documentation. |
-| **Workflow** | Explain plan → implement one commit worth → human commits locally → continue on `next`. Human owns final review of production-quality correctness and clarity. |
+How: I drove the work in small slices (plan → implement one concern → run tests → review the diff → commit myself → move on). Cursor drafted a lot of the TypeScript, tests, CLI, and an earlier pass of this README. I set the structure, the invariants, and the commit boundaries, and I treated anything that landed in the repo as my responsibility.
 
-I remain responsible for everything submitted; treat the suite (`npm test`) and demo (`npm start`) as the acceptance check for this delivery.
+Assisted: scaffolding and most module/test/CLI drafts.  
+Owned by me: problem breakdown, layer boundaries, which edge cases mattered, accepting or rewriting AI output, and the final review.
+
+Optional workflow note: prompts were scoped (“Crew Lead registry, exactly three, with Vitest”) rather than “build the whole challenge.” The commit log is the best picture of that rhythm.
+
+Please judge the result the same way you would any senior submission: `npm test`, `npm start`, and whether the code is something you would maintain.
